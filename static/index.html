@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elevate - Job Application Tailoring Assistant</title>
+    <meta name="description" content="AI-powered job application assistant that tailors your resume, generates cover letters, and tracks applications.">
+    <link rel="stylesheet" href="/static/css/styles.css?v=4">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="modal-overlay auth-overlay-bg">
+        <div class="modal auth-modal">
+            <div class="auth-brand">
+                <div class="auth-logo">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4l6.5 13h-13L12 6z" /></svg>
+                </div>
+            </div>
+            <div class="modal-header auth-header">
+                <h2 id="auth-title">Welcome back</h2>
+                <p id="auth-subtitle">Enter your details to access your workspace.</p>
+            </div>
+            <div class="modal-body auth-body">
+                <form id="auth-form">
+                    <div class="form-group">
+                        <label for="auth-email" class="form-label">Email address</label>
+                        <input type="email" id="auth-email" class="form-control auth-input" required placeholder="you@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-password" class="form-label">Password</label>
+                        <input type="password" id="auth-password" class="form-control auth-input" required placeholder="••••••••">
+                    </div>
+                    <div class="auth-actions">
+                        <button type="submit" id="btn-auth-submit" class="btn btn-primary auth-btn">Sign In</button>
+                    </div>
+                </form>
+                <div id="auth-error" class="error-text auth-error" style="display: none;"></div>
+                <div class="auth-switch-container">
+                    <p class="auth-switch-text" id="auth-switch-text">
+                        Don't have an account? <a href="#" id="auth-toggle-mode">Sign up</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2L2 22h20L12 2zm0 4l6.5 13h-13L12 6z" />
+                    </svg>
+                </div>
+                <div class="logo-text">Elevate</div>
+            </div>
+            
+            <nav class="nav-links">
+                <li class="nav-item active" data-page="dashboard">
+                    <a href="#">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="nav-item" data-page="resume">
+                    <a href="#">
+                        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        Resume
+                    </a>
+                </li>
+                <li class="nav-item" data-page="jobs">
+                    <a href="#">
+                        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        Jobs
+                    </a>
+                </li>
+                <li class="nav-item" data-page="tailor">
+                    <a href="#">
+                        <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Tailor
+                    </a>
+                </li>
+                <li class="nav-item" data-page="tracker">
+                    <a href="#">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                        Tracker
+                    </a>
+                </li>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="sidebar-footer-actions">
+                    <button class="sidebar-icon-btn" id="sidebar-signout-btn" title="Sign Out">
+                        <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                    </button>
+                    <button class="sidebar-icon-btn" id="sidebar-theme-btn" title="Toggle dark mode">
+                        <svg viewBox="0 0 24 24" id="theme-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    </button>
+                </div>
+                <div class="user-status">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-text">Connecting...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- 1. DASHBOARD PAGE -->
+            <section id="page-dashboard" class="page-section active">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Dashboard</h1>
+                        <p class="page-subtitle">Your progress at a glance</p>
+                    </div>
+                    <button class="btn btn-primary" id="dash-quick-scrape-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                        Add Job
+                    </button>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <div class="glass-panel stat-card">
+                        <div class="stat-val" id="stat-total-jobs">0</div>
+                        <div class="stat-label">Jobs Saved</div>
+                        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <div class="glass-panel stat-card">
+                        <div class="stat-val" id="stat-avg-match">--%</div>
+                        <div class="stat-label">Avg Match</div>
+                        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m8 11.5 3 3 5-5"/></svg>
+                    </div>
+                    <div class="glass-panel stat-card">
+                        <div class="stat-val" id="stat-active-apps">0</div>
+                        <div class="stat-label">In Progress</div>
+                        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/></svg>
+                    </div>
+                    <div class="glass-panel stat-card">
+                        <div class="stat-val" id="stat-interviews">0</div>
+                        <div class="stat-label">Interviews</div>
+                        <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                </div>
+                
+                <div class="dashboard-sections">
+                    <div class="glass-panel">
+                        <h2 class="section-title">Recent Jobs</h2>
+                        <div class="jobs-list" id="dash-recent-jobs" style="max-height: 350px;">
+                            <div class="empty-state">
+                                <p>No jobs yet. Add one from the Jobs page.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-panel">
+                        <h2 class="section-title">Quick Actions</h2>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <button class="btn btn-secondary" style="width: 100%; justify-content: flex-start;" id="dash-edit-resume-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                Edit Resume
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. MY RESUME PAGE -->
+            <section id="page-resume" class="page-section">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Resume</h1>
+                        <p class="page-subtitle">Your base resume used for tailoring</p>
+                    </div>
+                    <button class="btn btn-primary" id="btn-save-resume">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Save
+                    </button>
+                </div>
+                
+                <!-- DOCX Upload Drop Zone -->
+                <div id="resume-upload-zone" class="upload-zone" 
+                     ondragover="event.preventDefault(); this.classList.add('dragover');" 
+                     ondragleave="this.classList.remove('dragover');"
+                     ondrop="handleDocxDrop(event)" onclick="document.getElementById('docx-file-input').click()">
+                    <input type="file" id="docx-file-input" accept=".docx" style="display:none;" onchange="handleDocxFileSelect(event)">
+                    <svg id="upload-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" style="margin-bottom: 0.5rem; opacity: 0.7;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <div id="upload-status-text">
+                        <p style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.15rem;">Upload Resume (.docx)</p>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary);">Drag & drop or click to browse</p>
+                        <p style="font-size: 0.75rem; color: var(--accent); margin-top: 0.35rem;">Fields will be extracted automatically</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                    <!-- Professional Summary -->
+                    <div class="resume-section-card">
+                        <div class="resume-header">
+                            <h3>Summary</h3>
+                        </div>
+                        <div class="form-group">
+                            <textarea id="resume-summary" class="form-control" placeholder="Write a short summary of your professional background and goals..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Experience -->
+                    <div class="resume-section-card">
+                        <div class="resume-header">
+                            <h3>Experience</h3>
+                            <button class="btn btn-secondary" id="btn-add-experience" style="padding: 0.3rem 0.7rem; font-size: 0.75rem;">
+                                + Add
+                            </button>
+                        </div>
+                        <div class="item-list-container" id="experience-list">
+                            <!-- Dynamic positions -->
+                        </div>
+                    </div>
+                    
+                    <!-- Education -->
+                    <div class="resume-section-card">
+                        <div class="resume-header">
+                            <h3>Education</h3>
+                            <button class="btn btn-secondary" id="btn-add-education" style="padding: 0.3rem 0.7rem; font-size: 0.75rem;">
+                                + Add
+                            </button>
+                        </div>
+                        <div class="item-list-container" id="education-list">
+                            <!-- Dynamic education items -->
+                        </div>
+                    </div>
+                    
+                    <!-- Skills -->
+                    <div class="resume-section-card">
+                        <div class="resume-header">
+                            <h3>Skills</h3>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="resume-skills" class="form-control" placeholder="Python, JavaScript, AWS, SQL, React, Project Management (comma-separated)">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. JOB SCRAPER & BOARD PAGE -->
+            <section id="page-jobs" class="page-section">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Jobs</h1>
+                        <p class="page-subtitle">Import job postings or search for new ones</p>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    <!-- Column 1: Scrape -->
+                    <div class="glass-panel scraper-box" style="margin-bottom: 0;">
+                        <h3 class="section-title" style="margin-bottom: 0.75rem; font-size: 0.95rem;">Paste a URL</h3>
+                        <div class="scraper-input-group">
+                            <input type="url" id="scrape-url-input" class="form-control" placeholder="Lever, Greenhouse, LinkedIn, or career page URL...">
+                            <button class="btn btn-primary" id="btn-trigger-scrape">
+                                <span id="scrape-btn-text">Import</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Column 2: Search -->
+                    <div class="glass-panel scraper-box" style="margin-bottom: 0;">
+                        <h3 class="section-title" style="margin-bottom: 0.75rem; font-size: 0.95rem;">Search Jobs</h3>
+                        <div class="scraper-input-group" style="gap: 0.5rem;">
+                            <input type="text" id="search-keywords-input" class="form-control" placeholder="Keywords: e.g. Equity Research, Analyst" style="flex: 2;">
+                            <input type="text" id="search-location-input" class="form-control" placeholder="Location: Mumbai, India" style="flex: 1;" value="Mumbai, India">
+                            <button class="btn btn-primary" id="btn-trigger-search">
+                                <span id="search-btn-text">Search</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="jobs-layout">
+                    <div class="glass-panel" style="display: flex; flex-direction: column;">
+                        <div class="jobs-list-tabs">
+                            <button class="tab-btn active" id="btn-tab-saved-jobs">Saved Jobs</button>
+                            <button class="tab-btn" id="btn-tab-search-results">Search Results</button>
+                        </div>
+                        <div class="jobs-list" id="scraped-jobs-container">
+                            <div class="empty-state">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <p>No saved jobs yet.</p>
+                            </div>
+                        </div>
+                        <div class="jobs-list" id="search-results-container" style="display: none;">
+                            <div class="empty-state">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <p>Run a search to see results here.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-panel job-details-pane" id="job-details-pane">
+                        <div class="empty-state">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <p>Click a job to see details</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. TAILORING STUDIO -->
+            <section id="page-tailor" class="page-section">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Tailor</h1>
+                        <p class="page-subtitle">Match your resume to a job and generate tailored content</p>
+                    </div>
+                </div>
+                
+                <div class="glass-panel tailor-selector">
+                    <div style="flex: 1;">
+                        <label class="form-label">Choose a job</label>
+                        <select id="tailor-job-select" class="form-control">
+                            <option value="">-- Choose a job --</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="btn-run-analysis" style="margin-top: 1.25rem;" disabled>
+                        Analyze
+                    </button>
+                </div>
+                
+                <div id="tailor-workspace" style="display: none;">
+                    <div class="tailor-tabs">
+                        <button class="tab-btn active" data-tab="analysis">Analysis</button>
+                        <button class="tab-btn" data-tab="resume-tailor">Resume</button>
+                        <button class="tab-btn" data-tab="cover-letter">Cover Letter</button>
+                    </div>
+                    
+                    <!-- TAB 1: MATCH ANALYSIS -->
+                    <div id="tab-analysis" class="tailor-content active">
+                        <div class="analysis-summary-grid">
+                            <div class="glass-panel match-score-radial">
+                                <div class="radial-container">
+                                    <div class="radial-circle" id="analysis-radial">
+                                        <div class="radial-inner" id="analysis-score-text">0%</div>
+                                    </div>
+                                </div>
+                                <h4 style="font-weight: 600; margin-bottom: 0.15rem; font-size: 0.9rem;">Match Score</h4>
+                                <span style="font-size: 0.75rem; color: var(--text-secondary);" id="analysis-score-desc">Analyzing...</span>
+                            </div>
+                            
+                            <div class="glass-panel" style="display: flex; flex-direction: column; justify-content: center;">
+                                <h3 class="section-title" style="font-size: 1rem;">Highlights</h3>
+                                <div class="analysis-points" id="analysis-highlights">
+                                    <!-- Dynamic -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="skills-analysis-grid">
+                            <div class="glass-panel">
+                                <h3 class="section-title" style="color: var(--green); font-size: 0.95rem;">Skills You Have</h3>
+                                <div class="skills-list" id="analysis-matching-skills">
+                                    <!-- Dynamic -->
+                                </div>
+                            </div>
+                            <div class="glass-panel">
+                                <h3 class="section-title" style="color: var(--red); font-size: 0.95rem;">Skills to Add</h3>
+                                <div class="skills-list" id="analysis-missing-skills">
+                                    <!-- Dynamic -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="glass-panel">
+                            <h3 class="section-title" style="color: var(--orange); font-size: 0.95rem;">Suggestions</h3>
+                            <div class="analysis-points" id="analysis-feedback-points">
+                                <!-- Dynamic -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- TAB 2: TAILORED RESUME -->
+                    <div id="tab-resume-tailor" class="tailor-content">
+                        <div class="glass-panel" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="font-size: 1rem; font-weight: 600;">Rewrite Bullets</h3>
+                                <p class="section-subtitle">Rewrites your bullet points to better match this job.</p>
+                            </div>
+                            <button class="btn btn-primary" id="btn-trigger-tailoring">
+                                Rewrite
+                            </button>
+                        </div>
+                        
+                        <div class="comparison-layout">
+                            <div class="glass-panel comparison-pane">
+                                <h3 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--teal);">Before</h3>
+                                <div id="comparison-original-resume">
+                                    <!-- Rendered Base Profile -->
+                                </div>
+                            </div>
+                            <div class="glass-panel comparison-pane" style="position: relative;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                    <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--accent);">After</h3>
+                                    <button class="btn btn-secondary" id="btn-copy-tailored-resume" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; display: none;">
+                                        Copy Text
+                                    </button>
+                                </div>
+                                <div id="comparison-tailored-resume">
+                                    <div class="empty-state" style="padding: 2rem;">
+                                        <p>Click "Rewrite" to generate tailored bullets.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- TAB 3: COVER LETTER -->
+                    <div id="tab-cover-letter" class="tailor-content">
+                        <div class="glass-panel" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3 style="font-size: 1rem; font-weight: 600;">Cover Letter</h3>
+                                <p class="section-subtitle">Generates a cover letter tailored to this job.</p>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-secondary" id="btn-copy-cover-letter" style="display: none;">
+                                    Copy Letter
+                                </button>
+                                <button class="btn btn-primary" id="btn-trigger-cover-letter">
+                                    Generate
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="glass-panel" style="padding: 0;">
+                            <div id="cover-letter-output" class="cover-letter-box" style="display: none;" contenteditable="true">
+                                <!-- Generated Letter -->
+                            </div>
+                            <div class="empty-state" id="cover-letter-empty-state">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 19v-8.93a2 2 0 01.89-1.664l8-5.333a2 2 0 012.22 0l8 5.333A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-2.25-1.5a2 2 0 00-2.22 0l-2.25 1.5"/></svg>
+                                <p>Click "Generate" to write a cover letter for this job.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. KANBAN TRACKER PAGE -->
+            <section id="page-tracker" class="page-section">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Tracker</h1>
+                        <p class="page-subtitle">Drag cards between columns to track your progress</p>
+                    </div>
+                </div>
+                
+                <div class="kanban-board">
+                    <div class="kanban-column" data-stage="wishlist" style="--column-color: var(--purple);">
+                        <div class="column-header">
+                            <span class="column-title">Wishlist</span>
+                            <span class="column-count" id="count-wishlist">0</span>
+                        </div>
+                        <div class="column-cards" id="cards-wishlist"></div>
+                    </div>
+                    <div class="kanban-column" data-stage="applied" style="--column-color: var(--teal);">
+                        <div class="column-header">
+                            <span class="column-title">Applied</span>
+                            <span class="column-count" id="count-applied">0</span>
+                        </div>
+                        <div class="column-cards" id="cards-applied"></div>
+                    </div>
+                    <div class="kanban-column" data-stage="interviewing" style="--column-color: var(--orange);">
+                        <div class="column-header">
+                            <span class="column-title">Interviewing</span>
+                            <span class="column-count" id="count-interviewing">0</span>
+                        </div>
+                        <div class="column-cards" id="cards-interviewing"></div>
+                    </div>
+                    <div class="kanban-column" data-stage="offer" style="--column-color: var(--green);">
+                        <div class="column-header">
+                            <span class="column-title">Offer</span>
+                            <span class="column-count" id="count-offer">0</span>
+                        </div>
+                        <div class="column-cards" id="cards-offer"></div>
+                    </div>
+                    <div class="kanban-column" data-stage="rejected" style="--column-color: var(--red);">
+                        <div class="column-header">
+                            <span class="column-title">Rejected</span>
+                            <span class="column-count" id="count-rejected">0</span>
+                        </div>
+                        <div class="column-cards" id="cards-rejected"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="scrape-dialog-overlay" class="modal-overlay">
+        <div class="modal-panel">
+            <h3>Add Job</h3>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label class="form-label">Job URL</label>
+                <input type="url" id="dialog-scrape-url" class="form-control" placeholder="https://jobs.lever.co/company/job-id">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
+                <button class="btn btn-secondary" id="btn-close-scrape-dialog">Cancel</button>
+                <button class="btn btn-primary" id="btn-dialog-trigger-scrape">Import</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal Overlay Removed -->
+
+    <script src="/static/js/app.js?v=7"></script>
+</body>
+</html>
